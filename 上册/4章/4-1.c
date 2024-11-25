@@ -10,7 +10,6 @@ void copy_file(const char *sour, const char *dest)
         perror("Error opening source file");
         exit(1);
     }
-
     destination = fopen(dest, "wb");
     if (destination == NULL)
     {
@@ -36,6 +35,8 @@ int main(int argc, char *argv[])
     if (argc != 3)
     {
         printf("%s is error", argv[0]);
+        exit(1);
     }
     copy_file(argv[1], argv[2]);
+    return 0;
 }
