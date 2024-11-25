@@ -1,26 +1,26 @@
-#ifndef GET_ _NUM. H
+#ifndef GET_ _NUM_H
 
-#define GET_ NUM_ H
+#define GET_NUM_H
 
-#define GN_ NONNEG 01
+#define GN_NONNEG 01
 
 /* Value must be >= 0 */
 
-#define GN_ GT_0 02
+#define GN_GT_0 02
 
 /*Valuemustbe>0*/
 
 /* By default, integers are decimal */
 
-#define GN ANY_ BASE 0100
+#define GN_ANY_BASE 0100
 
 /* Can use any base - like strtol(3) */
 
-#define GN_ BASE_8 0200
+#define GN_BASE_8 0200
 
 /* Value is expressed in octal */
 
-#define GN_ BASE_16 0400
+#define GN_BASE_16 0400
 
 /* Value is expressed in hexadecimal */
 
