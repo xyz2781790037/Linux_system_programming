@@ -246,3 +246,28 @@ newfd = dup(1);
 ```
 - 如果想进一步简化上述代码，同时总是能获得所期望的文件描述符，可以调用 dup2(),dup2()系统调用会为 oldfd 参数所指定的文件描述符创建副本，其编号由 newfd 参数指定。如果由 newfd 参数所指定编号的文件描述符之前已经打开，那么 dup2()会首先将其关闭。
 - 如果 oldfd 并非有效的文件描述符，那么 dup2()调用将失败并返回错误 EBADF，且不关闭 newfd。如果 oldfd 有效，且与 newfd 值相等，那么 dup2()将什么也不做，不关闭 newfd，并将其作为调用结果返回。
+### 在文件特定偏移量处的 I/O：pread()和 pwrite()
+```c
+#include<unistd.h>
+ssize_t pread(int fd,void* buf,size_t count,off_t offset);
+ssize_t pread(int fd,const void* buf,size_t count,off_t offset);
+```
+- 对 pread()和 pwrite()而言，fd 所指代的文件必须是可定位的（即许对文件描述符执lseek()调用）。
+### 分散输入和集中输出（Scatter-Gather I/O）：readv()和 writev()
+### 截断文件：truncate()和 ftruncate()系统调用
+### 非阻塞 I/O
+### 大文件 I/O
+### 创建临时文件
+### /dev/fd 目录
+# 文 件 属 性
+### 获取文件信息：stat()
+```c
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/types.h>
+int stat(const char path, struct stat buf);
+int fstat(int fd, struct stat buf);
+int lstat(const char path, struct stat *buf);
+```
+- stat() 系统调用只是读取文件的元数据并返回，而不会对文件的内容或元数据进行任何更改，因此它不会修改文件的访问时间 (atime)、修改时间 (mtime) 或改变时间 (ctime)。这些时间戳仅会在实际的文件内容修改、文件元数据修改或文件访问时发生变化，而不是通过 stat() 调用。
+- 任何对文件的读取操作（无论是读取文件内容，还是读取元数据）都会导致 atime 更新。
