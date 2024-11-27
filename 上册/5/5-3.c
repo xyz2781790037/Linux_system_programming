@@ -39,7 +39,6 @@ void tee(const char *dest, int num_byte, int argc)
             exit(1);
         }
     }
-        
     close(destination);
     printf("Data written to %s\n", dest);
 }

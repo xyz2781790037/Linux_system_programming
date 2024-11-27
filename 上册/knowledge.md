@@ -224,7 +224,25 @@ int ioctl(int fd,int requst,.../*argp*/);
 int fcntl(int fd,int cmd,...);
 ```
 cmd 参数所支持的操作范围很广。fcntl()的第三个参数以省略号来表示，这意味着可以将其设置为不同的类型，或者加以省略。内核会依据 cmd 参数（如果有的话）的值来确定该参数的数据类型。
+- [fcntl](https://blog.csdn.net/2403_86955807/article/details/144093333)
+- [fcntl2](https://blog.csdn.net/wkd_007/article/details/135258634?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522b24c7c990835848326b9aeb94609d714%2522%252C%2522scm%2522%253A%252220140713.130102334..%2522%257D&request_id=b24c7c990835848326b9aeb94609d714&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~top_positive~default-1-135258634-null-null.142^v100^pc_search_result_base1&utm_term=fcntl&spm=1018.2226.3001.4187)
 ### 打开文件的状态标志
 - fcntl()的用途之一是针对一个打开的文件，获取或修改其访问模式和状态标志（这些值是通过指定 open()调用的 flag 参数来设置的）。要获取这些设置，应将 fcntl()的 cmd 参数设置为F_GETFL。
 - 可以使用 fcntl()的 F_SETFL 命令来修改打开文件的某些状态标志。允许更改的标志有O_APPEND、O_NONBLOCK、O_NOATIME、O_ASYNC 和 O_DIRECT。
-- 
+### 复制文件描述符
+```c
+#include<unistd.h>
+int dup(int oldfc);
+
+int dup2(int oldfd,int newfd);
+#define _GNU_SOURCE
+int dup3(int oldfd,int newfd,int flags);
+```
+- dup()调用复制一个打开的文件描述符 oldfd，并返回一个新描述符，二者都指向同一打开的文件句柄。系统会保证新描述符一定是编号值最低的未用文件描述符。
+- 再假定在正常情况下，shell 已经代表程序打开了文件描述符 01 和 2，且没有其他描述符在用，dup()调用会创建文件描述符 1 的副本，返回的文件描述符编号值为 3。如果希望返回文件描述符 2:
+```C
+close(2);
+newfd = dup(1);
+```
+- 如果想进一步简化上述代码，同时总是能获得所期望的文件描述符，可以调用 dup2(),dup2()系统调用会为 oldfd 参数所指定的文件描述符创建副本，其编号由 newfd 参数指定。如果由 newfd 参数所指定编号的文件描述符之前已经打开，那么 dup2()会首先将其关闭。
+- 如果 oldfd 并非有效的文件描述符，那么 dup2()调用将失败并返回错误 EBADF，且不关闭 newfd。如果 oldfd 有效，且与 newfd 值相等，那么 dup2()将什么也不做，不关闭 newfd，并将其作为调用结果返回。
