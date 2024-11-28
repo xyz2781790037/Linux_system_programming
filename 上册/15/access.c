@@ -35,6 +35,76 @@ int myaccess(const char *path, int mode)
                 return -1;
             }
         }
-        else if(mode & st.st_gid)
+        else if (mgid == st.st_gid)
+        {
+            if (!(file_gid & S_IRGRP))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+        else
+        {
+            if(!(file_other & S_IROTH))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
     }
+    if (mode & W_OK)
+    {
+        if (muid == st.st_uid)
+        {
+            if (!(file_uid & S_IWUSR))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+        else if (mgid == st.st_gid)
+        {
+            if (!(file_gid & S_IWGRP))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+        else
+        {
+            if (!(file_other & S_IWOTH))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+    }
+    if (mode & X_OK)
+    {
+        if (muid == st.st_uid)
+        {
+            if (!(file_uid & S_IXUSR))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+        else if (mgid == st.st_gid)
+        {
+            if (!(file_gid & S_IXGRP))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+        else
+        {
+            if (!(file_other & S_IXOTH))
+            {
+                errno = EACCES;
+                return -1;
+            }
+        }
+    }
+    return 0;
 }
