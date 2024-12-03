@@ -12,32 +12,20 @@
 #include <string.h>
 #include <getopt.h>
 
-struct dirent
-{
-#ifndef __USE_FILE_OFFSET64
-    __ino_t d_ino; /* inode number 索引节点号 */
-    __off_t d_off; /* offset to this dirent 在目录文件中的偏移 */
-#else
-    __ino64_t d_ino;
-    __off64_t d_off;
-#endif
-    unsigned short d_reclen; /* length of this d_name 文件名长 */
-    unsigned char d_type;    /* the type of d_name 文件类型 */
-    char d_name[256];        /* file name (null-terminated) 文件名，最长255字符 */
-};
-
 char mylsmk[7];
 int filesort(const struct dirent **a, const struct dirent **b)
 {
-    if (strcoll((*a)->d_type, (*a)->d_type) == 0)
+    
+    if ((*a)->d_type == (*b)->d_type)
     {
-        
+        return strcoll((*a)->d_name, (*b)->d_name);
     }
+    return (*a)->d_type - (*b)->d_type;
 }
 void mylsbase(struct dirent **fina)
 {
     int n;
-    n = scandir(".", &fina, NULL, alphasort);
+    n = scandir(".", &fina, NULL, filesort);
     if (n == -1)
     {
         perror("scandir");
@@ -48,10 +36,10 @@ void mylsbase(struct dirent **fina)
         if (strcmp(fina[i]->d_name, "..") != 0 && strncmp(fina[i]->d_name, ".", 1))
         {
             printf("%s  ", fina[i]->d_name);
-            if ((i + 1) % 4 == 0)
-            {
-                printf("\n");
-            }
+            // if ((i + 1) % 4 == 0)
+            // {
+            //     printf("\n");
+            // }
         }
         free(fina[i]);
     }
@@ -60,7 +48,7 @@ void mylsbase(struct dirent **fina)
 void myls_a(struct dirent **fina)
 {
     int n;
-    n = scandir(".", &fina, NULL, alphasort);
+    n = scandir(".", &fina, NULL, filesort);
     if (n == -1)
     {
         perror("scandir");
@@ -71,7 +59,6 @@ void myls_a(struct dirent **fina)
         printf("%s  ", fina[i]->d_name);
         free(fina[i]);
     }
-
     free(fina);
 }
 void myls_l()
@@ -100,7 +87,7 @@ int main(int argc, char *argv[])
     int mark_ls;
     if (argc > 1)
     {
-        if (strcmp(argv[1], "-l") == 0)
+        if (strcmp(argv[1], "-a") == 0)
         {
             mark_ls = 1;
         }
