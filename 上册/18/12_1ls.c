@@ -35,11 +35,7 @@ void mylsbase(struct dirent **fina)
     {
         if (strcmp(fina[i]->d_name, "..") != 0 && strncmp(fina[i]->d_name, ".", 1))
         {
-            printf("%s  ", fina[i]->d_name);
-            // if ((i + 1) % 4 == 0)
-            // {
-            //     printf("\n");
-            // }
+            printf("%s\n", fina[i]->d_name);
         }
         free(fina[i]);
     }
@@ -56,7 +52,7 @@ void myls_a(struct dirent **fina)
     }
     for (int i = 0; i < n; i++)
     {
-        printf("%s  ", fina[i]->d_name);
+        printf("%s\n", fina[i]->d_name);
         free(fina[i]);
     }
     free(fina);
