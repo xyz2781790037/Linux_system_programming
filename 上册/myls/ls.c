@@ -1,4 +1,5 @@
 #define _DEFAULT_SOURCE
+#define S_ISREG
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -10,38 +11,71 @@
 #include <string.h>
 #include <getopt.h>
 #include <ctype.h>
-int tolowers(const char a[], const char b[])
+int filesort_a(const struct dirent **a, const struct dirent **b)
 {
-    
+    char aw[256], bw[256];
+    if ((*a)->d_name[0] == '.' && strcmp((*a)->d_name, ".") != 0 && strcmp((*a)->d_name, "..") != 0)
+    {
+        strncpy(aw, (*a)->d_name + 1, strlen((*a)->d_name) - 1);
+        aw[strlen((*a)->d_name) - 1] = '\0';
+    }
+    else
+    {
+        strncpy(aw, (*a)->d_name, strlen((*a)->d_name));
+        aw[strlen((*a)->d_name)] = '\0';
+    }
+    if ((*b)->d_name[0] == '.' && strcmp((*b)->d_name, ".") != 0 && strcmp((*b)->d_name, "..") != 0)
+    {
+        strncpy(bw, (*b)->d_name + 1, strlen((*b)->d_name) - 1);
+        bw[strlen((*b)->d_name) - 1] = '\0';
+    }
+    else
+    {
+        strncpy(bw, (*b)->d_name, strlen((*b)->d_name));
+        bw[strlen((*b)->d_name)] = '\0';
+    }
+    return strcasecmp(aw, bw);
 }
 int filesort(const struct dirent **a, const struct dirent **b)
 {
-
     return strcasecmp((*a)->d_name, (*b)->d_name);
 }
-void mylsbase(struct dirent **fina,char *c)
+void mylsbase(struct dirent **fina, const char *c)
 {
     int n;
-    n = scandir(c, &fina, NULL, filesort);
-    if (n == -1)
+    struct stat st;
+    if (stat(c, &st) == -1)
     {
-        perror("scandir");
-        exit(EXIT_FAILURE);
+        perror("文件不存在或无法访问");
+        return;
     }
-    for (int i = 0; i < n; i++)
+    if (S_ISREG(st.st_mode))
     {
-        if (strcmp(fina[i]->d_name, "..") != 0 && strncmp(fina[i]->d_name, ".", 1))
+        printf("%s", c);
+    }
+    else
+    {
+        n = scandir(c, &fina, NULL, filesort);
+        if (n == -1)
         {
-            printf("%s\n", fina[i]->d_name);
+            perror("scandir");
+            exit(EXIT_FAILURE);
         }
-        free(fina[i]);
+        for (int i = 0; i < n; i++)
+        {
+            if (strcmp(fina[i]->d_name, "..") != 0 && strncmp(fina[i]->d_name, ".", 1))
+            {
+                printf("%s\n", fina[i]->d_name);
+            }
+            free(fina[i]);
+        }
+        free(fina);
     }
-    free(fina);
 }
 void myls_a(struct dirent **fina)
 {
     int n;
-    n = scandir(".", &fina, NULL, filesort);
+    n = scandir(".", &fina, NULL, filesort_a);
     if (n == -1)
     {
         perror("scandir");
@@ -66,11 +100,11 @@ int main(int argc, char *argv[])
     struct dirent **file;
     if (argc == 1)
     {
-        mylsbase(file,".");
+        mylsbase(file, ".");
     }
-    else if (argc == 2 && (strcmp(argv[2], ".") == 0 || strcmp(argv[2], "/") == 0))
+    else if (argc == 2 && argv[1][0] != '-')
     {
-        mylsbase(file, argv[2]);
+        mylsbase(file, argv[1]);
     }
     else
     {
