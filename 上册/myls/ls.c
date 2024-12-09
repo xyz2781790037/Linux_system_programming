@@ -59,7 +59,6 @@ void myls_l(const char *myd_name)
 {
     struct stat st;
     // printf("总计 %ld\n", st.st_blocks);
-    if (strcmp(myd_name, "..") != 0 && strncmp(myd_name, ".", 1))
     {
 
         if (stat(myd_name, &st) != -1)
@@ -95,7 +94,7 @@ void myls_l(const char *myd_name)
 
 int main(int argc, char *argv[])
 {
-    int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, flag = 0;
+    int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, flag = 0, argcv = 0;
     const char *path = (const char *)malloc(sizeof(int) * 2);
     struct dirent **file;
     if (argc == 1)
@@ -109,11 +108,12 @@ int main(int argc, char *argv[])
         {
             if (argv[j][0] != '-')
             {
-                count++;
+                count++, argcv = 1;
                 path = argv[j];
                 if (judge_file_or_directory(path))
                 {
                     printf("%s", path);
+                    return 0;
                 }
                 if (count == 1)
                 {
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
             }
             j++;
         }
-        if (!count)
+        if (argcv == 0)
         {
             n = scandir(".", &file, NULL, filesort);
         }
