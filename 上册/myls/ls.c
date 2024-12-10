@@ -1,7 +1,7 @@
 #define _DEFAULT_SOURCE
 #define S_ISREG
-#define link_num_width 2
-#define size_width 5
+#define link_num_width 3
+#define size_width 10
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -16,6 +16,7 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
+#include <libgen.h>
 int filesort(const struct dirent **a, const struct dirent **b)
 {
     char aw[256], bw[256];
@@ -60,7 +61,6 @@ void myls_l(const char *myd_name)
     struct stat st;
     // printf("总计 %ld\n", st.st_blocks);
     {
-
         if (stat(myd_name, &st) != -1)
         {
             if (S_ISDIR(st.st_mode))
@@ -91,15 +91,15 @@ void myls_l(const char *myd_name)
         }
     }
 }
-
 int main(int argc, char *argv[])
 {
     int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, flag = 0, argcv = 0;
-    const char *path = (const char *)malloc(sizeof(int) * 2);
+    const char *path = ".";
     struct dirent **file;
+    char result[1024];
     if (argc == 1)
     {
-        n = scandir(".", &file, NULL, filesort);
+        n = scandir(path, &file, NULL, filesort);
     }
     else
     {
@@ -108,6 +108,7 @@ int main(int argc, char *argv[])
         {
             if (argv[j][0] != '-')
             {
+
                 count++, argcv = 1;
                 path = argv[j];
                 if (judge_file_or_directory(path))
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
                 }
                 if (count == 1)
                 {
-                    n = scandir(path, &file, NULL, filesort);
+                n = scandir(path, &file, NULL, filesort);
                 }
                 else
                 {
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
         }
         if (argcv == 0)
         {
-            n = scandir(".", &file, NULL, filesort);
+            n = scandir(path, &file, NULL, filesort);
         }
     }
     if (n == -1 || m == -1)
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
         perror("scandir");
         exit(EXIT_FAILURE);
     }
-    while ((c = getopt(argc, argv, "a::l::t::r::i::s::")) != -1)
+    while ((c = getopt(argc, argv, "altris")) != -1)
     {
         switch (c)
         {
@@ -162,18 +163,20 @@ int main(int argc, char *argv[])
     }
     for (int i = 0; i < n; i++)
     {
+        memset(result, '\0', strlen(result));
+        sprintf(result, "%s/%s", path, file[i]->d_name);
         if (l_flag)
         {
             flag = 1;
             if (a_flag == 1)
             {
-                myls_l(file[i]->d_name);
+                myls_l(result);
             }
             else if (a_flag == 0)
             {
                 if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
                 {
-                    myls_l(file[i]->d_name);
+                    myls_l(result);
                     printf("%s\n", file[i]->d_name);
                 }
             }
