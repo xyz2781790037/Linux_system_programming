@@ -143,7 +143,7 @@ void myls_l(struct dirent **file, const char *c)
                 printf((st.st_mode & S_IWOTH) ? "w" : "-");
                 printf((st.st_mode & S_IXOTH) ? "x" : "-");
 
-                printf(" %*lu", link_num_width, st.st_nlink);
+                printf(" %*lu", link_num_width, st.st_mtime);
                 printf(" %s", getpwuid(st.st_uid)->pw_name);
                 printf(" %s", getgrgid(st.st_gid)->gr_name);
                 printf(" %*lu", size_width, st.st_size);

@@ -17,6 +17,8 @@
 #include <grp.h>
 #include <time.h>
 #include <libgen.h>
+const char *path = ".";
+int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, flag = 0, argcv = 0;
 int filesort(const struct dirent **a, const struct dirent **b)
 {
     char aw[256], bw[256];
@@ -40,7 +42,34 @@ int filesort(const struct dirent **a, const struct dirent **b)
         strncpy(bw, (*b)->d_name, strlen((*b)->d_name));
         bw[strlen((*b)->d_name)] = '\0';
     }
+    if(r_flag == 1)
+    {
+        return strcasecmp(bw, aw);
+    }
     return strcasecmp(aw, bw);
+}
+int timesort(const struct dirent **a, const struct dirent **b)
+{
+    struct stat st_a, st_b;
+    char result_a[1024];
+    char result_b[1024];
+    sprintf(result_a, "%s/%s", path, (*a)->d_name);
+    sprintf(result_b, "%s/%s", path, (*b)->d_name);
+    if (stat(result_a, &st_a) != -1 && stat(result_b, &st_b) != -1)
+    {
+        memset(result_a, '\0', strlen(result_a));
+        memset(result_b, '\0', strlen(result_b));
+        if(r_flag == 1)
+        {
+            return st_a.st_mtime - st_b.st_mtime;
+        }
+        return st_b.st_mtime - st_a.st_mtime;
+    }
+    else
+    {
+        perror("stat");
+        return 0;
+    }
 }
 int judge_file_or_directory(const char *c)
 {
@@ -93,50 +122,10 @@ void myls_l(const char *myd_name)
 }
 int main(int argc, char *argv[])
 {
-    int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, flag = 0, argcv = 0;
-    const char *path = ".";
+    int (*sort)(const struct dirent **a, const struct dirent **b);
+    sort = filesort;
     struct dirent **file;
     char result[1024];
-    if (argc == 1)
-    {
-        n = scandir(path, &file, NULL, filesort);
-    }
-    else
-    {
-        int j = 1, count = 0;
-        while (j <= argc - 1)
-        {
-            if (argv[j][0] != '-')
-            {
-
-                count++, argcv = 1;
-                path = argv[j];
-                if (judge_file_or_directory(path))
-                {
-                    printf("%s", path);
-                    return 0;
-                }
-                if (count == 1)
-                {
-                n = scandir(path, &file, NULL, filesort);
-                }
-                else
-                {
-                    m = scandir(path, &file, NULL, filesort);
-                }
-            }
-            j++;
-        }
-        if (argcv == 0)
-        {
-            n = scandir(path, &file, NULL, filesort);
-        }
-    }
-    if (n == -1 || m == -1)
-    {
-        perror("scandir");
-        exit(EXIT_FAILURE);
-    }
     while ((c = getopt(argc, argv, "altris")) != -1)
     {
         switch (c)
@@ -161,6 +150,50 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    if (t_flag)
+    {
+        sort = timesort;
+    }
+    if (argc == 1)
+    {
+        n = scandir(path, &file, NULL, sort);
+    }
+    else
+    {
+        int j = 1, count = 0;
+        while (j <= argc - 1)
+        {
+            if (argv[j][0] != '-')
+            {
+
+                count++, argcv = 1;
+                path = argv[j];
+                if (judge_file_or_directory(path))
+                {
+                    printf("%s", path);
+                    return 0;
+                }
+                if (count == 1)
+                {
+                    n = scandir(path, &file, NULL, sort);
+                }
+                else if (count == 2)
+                {
+                    m = scandir(path, &file, NULL, sort);
+                }
+            }
+            j++;
+        }
+        if (argcv == 0)
+        {
+            n = scandir(path, &file, NULL, sort);
+        }
+    }
+    if (n == -1 || m == -1)
+    {
+        perror("scandir");
+        exit(EXIT_FAILURE);
+    }
     for (int i = 0; i < n; i++)
     {
         memset(result, '\0', strlen(result));
@@ -177,6 +210,7 @@ int main(int argc, char *argv[])
                 if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
                 {
                     myls_l(result);
+                    if(r_flag == 0)
                     printf("%s\n", file[i]->d_name);
                 }
             }
@@ -186,20 +220,21 @@ int main(int argc, char *argv[])
             flag = 1;
             printf("%s\n", file[i]->d_name);
         }
-        if (t_flag)
-        {
-            flag = 1;
-            // myls_t(file);
-        }
         if (r_flag)
         {
             flag = 1;
-            // myls_r(file);
+            if (a_flag == 0)
+            {
+                if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
+                {
+                    printf("%s\n", file[i]->d_name);
+                }
+            }
         }
         if (i_flag)
         {
             flag = 1;
-            // myls_i(file);
+            // printf("%s\n", file[i]->d_name);
         }
         if (s_flag)
         {
