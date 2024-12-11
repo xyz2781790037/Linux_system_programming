@@ -1,4 +1,3 @@
-#define _DEFAULT_SOURCE
 #define S_ISREG
 #define S_IFLNK
 #define link_num_width 3
@@ -19,9 +18,9 @@
 #include <pwd.h>
 #include <grp.h>
 #include <time.h>
-#include <libgen.h>
 const char *path = ".";
 int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0, exitflag = 0;
+char Rpath[320000][1024];
 void coloer(char result[], const char *name)
 {
     struct stat st;
@@ -82,7 +81,6 @@ int filesort(const struct dirent **a, const struct dirent **b)
     }
     return strcasecmp(aw, bw);
 }
-char Rpath[320000][1024];
 int timesort(const struct dirent **a, const struct dirent **b)
 {
     struct stat st_a, st_b;
