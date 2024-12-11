@@ -2,7 +2,7 @@
 #define S_ISREG
 #define link_num_width 3
 #define size_width 10
-#define blocks_size_width 3
+#define blocks_size_width 5
 #define ino_width 7
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,7 +20,7 @@
 #include <time.h>
 #include <libgen.h>
 const char *path = ".";
-int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0;
+int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0;
 void coloer(char result[], const char *name)
 {
     struct stat st;
@@ -28,23 +28,33 @@ void coloer(char result[], const char *name)
     {
         if (S_ISDIR(st.st_mode))
         {
-            printf("\033[1;34m""%s\n\033[0m", name);
+            printf("\033[1;34m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (S_ISLNK(st.st_mode))
         {
-            printf("\033[1;36m""%s\n\033[0m", name);
+            printf("\033[1;36m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (st.st_mode & S_IXUSR) // write权限
         {
-            printf("\033[1;32m""%s\n\033[0m", name);
+            printf("\033[1;32m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (strstr(name, ".png") != NULL || strstr(name, ".jpg") != NULL || strstr(name, ".gif") != NULL)
         {
-            printf("\033[1;35m""%s\n\033[0m",name);
+            printf("\033[1;35m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (strstr(name, ".zip") != NULL || strstr(name, ".tar") != NULL || strstr(name, ".gz") != NULL)
         {
-            printf("\033[1;31m""%s\n\033[0m", name);
+            printf("\033[1;31m"
+                   "%s\n\033[0m",
+                   name);
         }
         else
         {
@@ -81,6 +91,17 @@ int filesort(const struct dirent **a, const struct dirent **b)
     }
     return strcasecmp(aw, bw);
 }
+char **Rpath;
+int line = 100, list = 1024;
+void arrp(char **Rpath)
+{
+    Rpath = (char **)realloc(Rpath, line * 2);
+    for (int i = line; i < line * 2; i++)
+    {
+        Rpath[i] = (char *)malloc(list);
+    }
+    line *= 2;
+}
 int timesort(const struct dirent **a, const struct dirent **b)
 {
     struct stat st_a, st_b;
@@ -110,7 +131,6 @@ int judge_file_or_directory(const char *c)
     if (stat(c, &st) == -1)
     {
         perror("文件或目录不存在或无法访问");
-        exit(1);
     }
     if (S_ISREG(st.st_mode))
     {
@@ -118,18 +138,12 @@ int judge_file_or_directory(const char *c)
     }
     return 0;
 }
-int total_blocks(blkcnt_t n)
-{
-
-}
 void myls_l_s(const char *myd_name, const char *name)
 {
     struct stat st;
-    
     {
         if (stat(myd_name, &st) != -1)
         {
-            printf("总计 %ld\n",total_blocks(st.st_blocks));
             if (l_flag == 0)
             {
                 if (s_flag)
@@ -147,7 +161,7 @@ void myls_l_s(const char *myd_name, const char *name)
                     }
                 }
             }
-            else
+            else if (l_flag == 1)
             {
                 if (s_flag)
                 {
@@ -193,9 +207,14 @@ void myls_l_s(const char *myd_name, const char *name)
     }
 }
 int parameter[16];
-int indextime;
+int indextime, Rtime, Rindex = 0;
 int main(int argc, char *argv[])
 {
+    Rpath = (char **)malloc(line);
+    for (int i = 0; i < line; i++)
+    {
+        Rpath[i] = (char *)malloc(list);
+    }
     while ((c = getopt(argc, argv, "altrisR")) != -1)
     {
         switch (c)
@@ -255,30 +274,43 @@ int main(int argc, char *argv[])
             notflag = 1;
         }
     }
-    for (int time_i = 0; time_i < indextime; time_i++)
+    Rtime = indextime;
+    for (int time_i = 0; time_i < Rtime; time_i++)
     {
-        if (notflag == 0)
+        if (notflag == 0 || R_flag == 1)
         {
-            path = argv[parameter[time_i]];
+            if (time_i < indextime)
+            {
+                path = argv[parameter[time_i]];
+            }
+            else if (time_i >= indextime && R_flag)
+            {
+                path = Rpath[time_i - indextime];
+            }
             if (judge_file_or_directory(path))
             {
                 printf("%s", path);
                 return 0;
             }
-            if (indextime > 1)
+            if (Rtime > 1)
                 printf("%s:\n", path);
         }
         n = scandir(path, &file, NULL, sort);
         if (n == -1)
         {
-            perror("scandir");
-            exit(EXIT_FAILURE);
+            printf("无法打开目录 '%s': 权限不够\n", path);
         }
         for (int i = 0; i < n; i++)
         {
             memset(result, '\0', strlen(result));
             sprintf(result, "%s/%s", path, file[i]->d_name);
-
+            if ((stat(path, &st) != -1) && i == 0)
+            {
+                if (s_flag || l_flag)
+                {
+                    printf("总计 %ld\n", st.st_blocks);
+                }
+            }
             if (i_flag)
             {
                 flag = 1;
@@ -295,10 +327,6 @@ int main(int argc, char *argv[])
                     printf("%ld ", file[i]->d_ino);
                 }
             }
-            if (s_flag)
-            {
-                myls_l_s(result, file[i]->d_name);
-            }
             if (l_flag)
             {
                 flag = 1;
@@ -314,6 +342,14 @@ int main(int argc, char *argv[])
                         if (r_flag == 0)
                             coloer(result, file[i]->d_name);
                     }
+                }
+                flagg = 1;
+            }
+            if (s_flag)
+            {
+                if (flagg == 0)
+                {
+                    myls_l_s(result, file[i]->d_name);
                 }
             }
             if (a_flag)
@@ -332,6 +368,37 @@ int main(int argc, char *argv[])
                     }
                 }
             }
+            if (R_flag)
+            {
+                if (stat(result, &st) != -1)
+                {
+                    if (S_ISDIR(st.st_mode))
+                    {
+                        if (a_flag)
+                        {
+                            if (strcmp(file[i]->d_name, "..") != 0 && strcmp(file[i]->d_name, ".") != 0)
+                            {
+                                Rtime++;
+                                strncpy(Rpath[Rindex], result, strlen(result));
+                                Rindex++;
+                            }
+                        }
+                        else
+                        {
+                            if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
+                            {
+                                Rtime++;
+                                strncpy(Rpath[Rindex], result, strlen(result));
+                                Rindex++;
+                            }
+                        }
+                        if (Rindex == line - 10)
+                        {
+                            arrp(Rpath);
+                        }
+                    }
+                }
+            }
             if (flag == 0)
             {
                 if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
@@ -341,10 +408,13 @@ int main(int argc, char *argv[])
             }
             free(file[i]);
         }
-        free(file);
-        if (time_i < indextime - 1)
+        if (n >= 0)
         {
-            printf("\n");
+            free(file);
+            if (time_i < Rtime - 1)
+            {
+                printf("\n");
+            }
         }
     }
     return 0;
