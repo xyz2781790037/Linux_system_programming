@@ -20,7 +20,7 @@
 #include <time.h>
 const char *path = ".";
 int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0, exitflag = 0;
-char Rpath[640000][1024];
+char Rpath[1000000][144];
 void coloer(char result[], const char *name)
 {
     struct stat st;
@@ -110,7 +110,7 @@ int judge_file_or_directory(const char *c)
     if (lstat(c, &st) == -1)
     {
         perror("文件或目录不存在或无法访问");
-        exitflag = 1;
+        return 0;
     }
     if (S_ISREG(st.st_mode))
     {
@@ -299,11 +299,10 @@ int main(int argc, char *argv[])
                 printf("%s:\n", path);
         }
         n = scandir(path, &file, NULL, sort);
-        if (n < 0 && exitflag == 0)
+        if (n < 0)
         {
             printf("无法打开目录 '%s': 权限不够\n", path);
         }
-        exitflag = 0;
         for (int i = 0; i < n; i++)
         {
             memset(result, '\0', strlen(result));
