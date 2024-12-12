@@ -20,7 +20,7 @@
 #include <time.h>
 const char *path = ".";
 int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0, exitflag = 0;
-char Rpath[320000][1024];
+char Rpath[640000][1024];
 void coloer(char result[], const char *name)
 {
     struct stat st;
