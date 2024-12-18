@@ -20,8 +20,8 @@
 #include <time.h>
 const char *path = ".";
 int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0, exitflag = 0;
-char Rpath[1000000][200];
-void coloer(char result[], const char *name)
+char Rpath[1000000][200];// R中存放目录名
+void colour(char result[], const char *name)
 {
     struct stat st;
     if (lstat(result, &st) != -1)
@@ -118,7 +118,7 @@ int judge_file_or_directory(const char *c)
     }
     return 0;
 }
-void myls_l_s(const char *myd_name, const char *name)
+void myls_l_s(const char *myd_name, const char *name)//l | s
 {
     struct stat st;
     {
@@ -128,7 +128,7 @@ void myls_l_s(const char *myd_name, const char *name)
             {
                 if (s_flag)
                 {
-                    if (a_flag == 0)
+                    if (a_flag == 0)//不带 带.   . 和 .. 文件
                     {
                         if (strcmp(name, "..") != 0 && strncmp(name, ".", 1) != 0)
                         {
@@ -157,24 +157,24 @@ void myls_l_s(const char *myd_name, const char *name)
                         printf("%*ld ", blocks_size_width, st.st_blocks / 2);
                     }
                 }
-                if (S_ISDIR(st.st_mode))
+                if (S_ISDIR(st.st_mode))//目录
                     printf("d");
-                else if (S_ISLNK(st.st_mode))
+                else if (S_ISLNK(st.st_mode))//符号链接
                     printf("l");
                 else
                     printf("-");
                 printf((st.st_mode & S_IRUSR) ? "r" : "-");
                 printf((st.st_mode & S_IWUSR) ? "w" : "-");
-                printf((st.st_mode & S_IXUSR) ? "x" : "-");
+                printf((st.st_mode & S_IXUSR) ? "x" : "-");//自己权限
                 printf((st.st_mode & S_IRGRP) ? "r" : "-");
                 printf((st.st_mode & S_IWGRP) ? "w" : "-");
-                printf((st.st_mode & S_IXGRP) ? "x" : "-");
+                printf((st.st_mode & S_IXGRP) ? "x" : "-");//组权限
                 printf((st.st_mode & S_IROTH) ? "r" : "-");
                 printf((st.st_mode & S_IWOTH) ? "w" : "-");
-                printf((st.st_mode & S_IXOTH) ? "x" : "-");
+                printf((st.st_mode & S_IXOTH) ? "x" : "-");//其他权限
 
-                printf(" %*lu", link_num_width, st.st_nlink);
-                printf(" %s", getpwuid(st.st_uid)->pw_name);
+                printf(" %*lu", link_num_width, st.st_nlink);//链接数
+                printf(" %s", getpwuid(st.st_uid)->pw_name);//
                 printf(" %s", getgrgid(st.st_gid)->gr_name);
                 printf(" %*lu", size_width, st.st_size);
 
