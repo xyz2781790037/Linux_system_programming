@@ -275,4 +275,11 @@ int lstat(const char path, struct stat *buf);
 - rm 命令从目录列表中删除一文件名，将相应 i-node的链接计数减一，若链接计数因此而降为 0，则还将释放该文件名所指代的 i-node 和数据块。
 - **readdir()对 Linux 特有/proc/PID/fd 目录内容（内含符号链接指向进程当前打开的每个文件描述符）的扫描，可以获知一个进程当前打开了哪些文件。**
 - 符号链接之间可能会形成链路（例如，a 是指向 b 的符号链接，而 b 是指向 c 的符号链接）。当在各个文件相关的系统调用中指定了符号链接时，内核会对一系列链接层层解去引用，直抵最终文件。
-###
+# 进程
+系统调用 getpid()返回调用进程的进程号。
+```C
+#include<unistd.h>
+pid_t getpid(void);
+
+pid_t getppid(void);
+```
