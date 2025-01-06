@@ -20,7 +20,6 @@
 #include <time.h>
 const char *path = ".";
 int c, n, m, a_flag = 0, l_flag = 0, t_flag = 0, r_flag = 0, i_flag = 0, s_flag = 0, R_flag = 0, flag = 0, argcv = 0, flagg = 0, exitflag = 0;
-char Rpath[1000000][200];// R中存放目录名
 void colour(char result[], const char *name)
 {
     struct stat st;
@@ -28,23 +27,33 @@ void colour(char result[], const char *name)
     {
         if (S_ISDIR(st.st_mode))
         {
-            printf("\033[1;34m""%s\n\033[0m",name);
+            printf("\033[1;34m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (S_ISLNK(st.st_mode))
         {
-            printf("\033[1;36m""%s\n\033[0m",name);
+            printf("\033[1;36m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (st.st_mode & S_IXUSR) // write权限
         {
-            printf("\033[1;32m""%s\n\033[0m",name);
+            printf("\033[1;32m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (strstr(name, ".png") != NULL || strstr(name, ".jpg") != NULL || strstr(name, ".gif") != NULL)
         {
-            printf("\033[1;35m""%s\n\033[0m",name);
+            printf("\033[1;35m"
+                   "%s\n\033[0m",
+                   name);
         }
         else if (strstr(name, ".zip") != NULL || strstr(name, ".tar") != NULL || strstr(name, ".gz") != NULL)
         {
-            printf("\033[1;31m""%s\n\033[0m",name);
+            printf("\033[1;31m"
+                   "%s\n\033[0m",
+                   name);
         }
         else
         {
@@ -118,7 +127,7 @@ int judge_file_or_directory(const char *c)
     }
     return 0;
 }
-void myls_l_s(const char *myd_name, const char *name)//l | s
+void myls_l_s(const char *myd_name, const char *name) // l | s
 {
     struct stat st;
     {
@@ -128,7 +137,7 @@ void myls_l_s(const char *myd_name, const char *name)//l | s
             {
                 if (s_flag)
                 {
-                    if (a_flag == 0)//不带 带.   . 和 .. 文件
+                    if (a_flag == 0) // 不带 带.   . 和 .. 文件
                     {
                         if (strcmp(name, "..") != 0 && strncmp(name, ".", 1) != 0)
                         {
@@ -157,24 +166,24 @@ void myls_l_s(const char *myd_name, const char *name)//l | s
                         printf("%*ld ", blocks_size_width, st.st_blocks / 2);
                     }
                 }
-                if (S_ISDIR(st.st_mode))//目录
+                if (S_ISDIR(st.st_mode)) // 目录
                     printf("d");
-                else if (S_ISLNK(st.st_mode))//符号链接
+                else if (S_ISLNK(st.st_mode)) // 符号链接
                     printf("l");
                 else
                     printf("-");
                 printf((st.st_mode & S_IRUSR) ? "r" : "-");
                 printf((st.st_mode & S_IWUSR) ? "w" : "-");
-                printf((st.st_mode & S_IXUSR) ? "x" : "-");//自己权限
+                printf((st.st_mode & S_IXUSR) ? "x" : "-"); // 自己权限
                 printf((st.st_mode & S_IRGRP) ? "r" : "-");
                 printf((st.st_mode & S_IWGRP) ? "w" : "-");
-                printf((st.st_mode & S_IXGRP) ? "x" : "-");//组权限
+                printf((st.st_mode & S_IXGRP) ? "x" : "-"); // 组权限
                 printf((st.st_mode & S_IROTH) ? "r" : "-");
                 printf((st.st_mode & S_IWOTH) ? "w" : "-");
-                printf((st.st_mode & S_IXOTH) ? "x" : "-");//其他权限
+                printf((st.st_mode & S_IXOTH) ? "x" : "-"); // 其他权限
 
-                printf(" %*lu", link_num_width, st.st_nlink);//链接数
-                printf(" %s", getpwuid(st.st_uid)->pw_name);//
+                printf(" %*lu", link_num_width, st.st_nlink); // 链接数
+                printf(" %s", getpwuid(st.st_uid)->pw_name);  //
                 printf(" %s", getgrgid(st.st_gid)->gr_name);
                 printf(" %*lu", size_width, st.st_size);
 
@@ -218,6 +227,8 @@ int parameter[16];
 int indextime, Rtime, Rindex = 0;
 int main(int argc, char *argv[])
 {
+    int path_length = 1000;
+    char **Rpath = (char **)malloc(path_length);
     while ((c = getopt(argc, argv, "altrisR")) != -1)
     {
         switch (c)
@@ -377,24 +388,24 @@ int main(int argc, char *argv[])
                 {
                     if (S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode))
                     {
-                        if (a_flag)
+                        if (a_flag && (strcmp(file[i]->d_name, "..") != 0 && strcmp(file[i]->d_name, ".") != 0))
                         {
-                            if (strcmp(file[i]->d_name, "..") != 0 && strcmp(file[i]->d_name, ".") != 0)
-                            {
-                                Rtime++;
-                                strncpy(Rpath[Rindex], result, strlen(result));
-                                Rindex++;
-                            }
+                            Rpath[Rindex] = (char *)malloc(200);
+                            Rtime++;
+                            strncpy(Rpath[Rindex], result, strlen(result));
+                            Rpath[Rindex][strlen(result)] = '\0';
+                            Rindex++;
                         }
-                        else
+                        else if (!a_flag && (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0))
                         {
-                            if (strcmp(file[i]->d_name, "..") != 0 && strncmp(file[i]->d_name, ".", 1) != 0)
-                            {
-                                Rtime++;
-                                strncpy(Rpath[Rindex], result, strlen(result));
-                                Rindex++;
-                            }
+                            Rpath[Rindex] = (char *)malloc(200);
+                            Rtime++;
+                            strncpy(Rpath[Rindex], result, strlen(result));
+                            Rpath[Rindex][strlen(result)] = '\0';
+                            Rindex++;
                         }
+                        path_length += 1;
+                        Rpath = (char **)realloc(Rpath,path_length * 9);
                     }
                 }
             }
@@ -415,6 +426,11 @@ int main(int argc, char *argv[])
                 printf("\n");
             }
         }
+        if (R_flag && time_i >= indextime)
+        {
+            free(Rpath[time_i - indextime]);
+        }
     }
+    free(Rpath);
     return 0;
 }
