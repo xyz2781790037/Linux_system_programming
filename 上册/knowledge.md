@@ -392,3 +392,151 @@ SIGHUP
 此信号为“必杀（sure kill）”信号
 #### SIGLOST
 更多见20.2节
+### 改变信号处置：signal()
+```c
+#include<signal.h>
+void (*signal(int sig,void (*handler)(int)))(int);
+void handler(int sig)
+{
+    //code for the handler
+}
+```
+- 第一个参数 sig，标识希望修改处置的信号编号，第二个参数 handler，则标识信号抵达时所调用函数的地址。该函数无返回值（void），并接收一个整型参数。
+- signal()的返回值是之前的信号处置。像 handler 参数一样，这是一枚指针，所指向的是带有一个整型参数且无返回值的函数。
+- 使用 signal()，将无法在不改变信号处置的同时，还能获取到当前的信号处置。要想做到这一点，必须使用 sigaction()
+signal()原型可以改写成如下形式：
+```C
+sighandler_t signal(int sig ,sighandler_t handler);
+```
+在为 signal()指定 handler 参数时，可以以如下值来代替函数地址：
+> 1. SIG_DFL
+> 2. SIG_IGN
+### 发送信号：kill()
+与 shell 的 kill 命令相类似，一个进程能够使用 kill()系统调用向另一进程发送信号。
+```c
+#include<signal.h>
+int kill(pid_t pid,int sig);
+```
+解释 pid，要视以下 4 种情况而定。
+> - 如果 pid 大于 0，那么会发送信号给由 pid 指定的进程。
+> - 如果 pid 等于 0，那么会发送信号给与调用进程同组的每个进程，包括调用进程自身
+> - 如果 pid 小于−1，那么会向组 ID 等于该 pid 绝对值的进程组内所有下属进程发送信号。
+> - 如果 pid 等于−1，那么信号的发送范围是：调用进程有权将信号发往的每个目标进程，除去 init（进程 ID 为 1）和调用进程自身。
+### 发送信号的其他方式：raise()和 killpg()
+有时，进程需要向自身发送信号（34.7.3 节就有此一例）。raise()函数就执行了这一任务。
+```c
+#include<signal.h>
+int raise(int sig);
+int killpg(pid_t pgrp,int sig);
+```
+单线程程序中，调用 raise()相当于对 kill()的如下调用
+```c
+kill(getpid(),sig);
+```
+支持线程的系统会将 raise(sig)实现为：
+```c
+pthread_kill(pthread_self(),sig);
+```
+psignal()函数（在标准错误设备上）所示为 msg 参数所给定的字符串，后面跟有一个冒号，随后是对应于 sig 的信号描述。和 strsignal()一样，psignal()函数也对本地设置敏感。
+```c
+#include<signal.h>
+void psignal(int sig,const char*msg);
+```
+### 信号集
+1. 必须使用 sigemptyset()或者 sigfillset()来初始化信号集。
+2. 信号集初始化后，可以分别使用 sigaddset()和 sigdelset()函数向一个集合中添加或者移除单个信号。
+3. sigismember()函数用来测试信号 sig 是否是信号集 set 的成员。如果 sig 是 set 的一个成员，那么 sigismember()函数将返回 1（true）
+，否则返回 0（false）。
+4. GNU C 库还实现了 3 个非标准函数，是对上述信号集标准函数的补充。
+```C
+#include<signal.h>
+int signemptyset(sigset_t *set);
+int sigfillset(sigset_t *set);
+int sigaddset(sigset_t *set,int sig);
+int sigdelset(sigset_t *set,int sig);
+int sigismember(sigset_t *set, int signo);
+// 如果是返回1，如果不是，返回0，如果给定的信号无效，返回-1；
+```
+```c
+#define _GNU_SOURCE
+#include <signal.h>
+int sigandset(sigset_t *set,sigset_t *left,sigset_t *right);
+int sigorset(sigset_t *dset,sigset_t *left,sigset_t *right);
+int sigisemptyset(const sigset_t *set);
+```
+- sigandset()将 left 集和 right 集的交集置于 dest 集。
+- sigorset()将 left 集和 right 集的并集置于 dest 集。
+- 若 set 集内未包含信号，则 sigisemptyset()返回 true。
+
+printSigset()显示了指定信号集的成员信号。
+### 信号掩码（阻塞信号传递）
+向信号掩码中添加一个信号，有如下几种方式。
+- 当调用信号处理器程序时，可将引发调用的信号自动添加到信号掩码中。是否发生这一情况，要视 sigaction()函数在安装信号处理器程序时所使用的标志而定。
+- 使用 sigaction()函数建立信号处理器程序时，可以指定一组额外信号，当调用该处理器程序时会将其阻塞。
+- 使用 sigprocmask()系统调用，随时可以显式向信号掩码中添加或移除信号。
+```C
+int sigprocmask(int how,const sigset_t *set,sigset_t *oldset);
+```
+- 若oset是非空指针，那么进程的当前信号屏蔽字通过oset返回
+- 若set是非空指针，那么参数how指示如何修改当前信号屏蔽字
+- > SIG_BLOCK：将set指向的包含了希望阻塞的信号集，与当前信号屏蔽字，相并，或操作
+SIG_UNBLOCK：将set指向的包含了希望阻塞的信号集的补集，与当前信号屏蔽字，相交，与操作
+SIG_SETMASK：将当前的信号集合设置为set指向的信号集，赋值操作
+-  如果set是空指针，那么不改变进程的信号屏蔽字，how无意义
+
+如果解除了对某个信号的锁定，那么会立刻将该信号传递给进程，系统将忽略试图阻塞SIGKILL和SIGSTOP信号的请求，如果试图阻塞，sigprocmask既不会处理，也不会产生错误，这意味着，可以使用如下方式阻塞除了SIGKILL和SIGSTOP之外的所有信号：
+> // 使用blockset(包含所有信号)初始化信号集
+sigfillset(&blockset);
+// 将所有信号阻塞，但实际无法阻塞SIGKILL和SIGSTOP
+if (-1 == sigprocmask(SIG_BLOCK, &blockset, NULL))
+    perror("sigprocmask error");
+
+### 处于等待状态的信号
+返回的信号集由参数set返回，对于调用进程而言，其中的各个信号是阻塞不能传递的，因而一定是当前未决的；如果某进程接受了一个该进程正在阻塞的信号，那么会将该信号添加到进程的等待信号集中，当解除了对该信号的锁定时，随之将信号传递给此进程
+```C
+#include <signal.h>
+
+int sigpending(sigset_t *set);
+// 返回值：若成功，返回0，若出错，返回-1
+```
+### 不对信号进行排队处理
+如果同一信号在阻塞状态下产生多次，那么会将该信号记录在等待信号集中，稍后仅传递一次；即使进程没有阻塞信号，其收到的信号可能比发送给它的要少得多，如果信号发送速度如此之快，以至于内核考虑将执行权调度给接收进程前，这些信号已经到达，就会发生这种情况
+### 改变信号处置：sigaction
+sigaction较之于signal，允许在获取信号处置的同时无需将其改变，还可以设置各种属性对调用信号处理程序时的行为控制的更加精确，可移植性也更加：
+```C
+#include <signal.h>
+
+int sigaction(int signo, conststruct sigaction*restrict act, struct sigaction*restrict oact);
+// 若成功，返回0，若出错，返回-1
+// signo是除去SIGKILL和SIGSTOP之外的任何信号
+
+struct sigaction{
+  void (*sa_handler)(int);
+  sigset_t sa_mask;
+  int sa_flag;
+  void (*sa_sigaction)(int, siginfo_t*, void*);
+};
+// sa_handler对应于signal的handler参数，是信号处理函数的地址，或者是常量SIG_IGN、SIG_DFL之一
+// 仅当sa_handler是信号处理函数的地址，即SIG_IGN、SIG_DFL之外的取值，才会对sa_mask和sa_flag加以处理
+// sa_sigaction和sa_handler，在应用中只能一次使用其中之一
+
+sa_flag的选项：
+SA_INTERRUPT: 由此信号中断的系统调用不自动重启动
+SA_NOCLDSTOP: 若signo是SIGCHLD，当子进程停止，不产生此信号，当子进程终止，仍旧产生此信号，若已设置此标志，当停止的进程继续运行时，不产生SIGCHLD信号
+SA_NOCLDWAIT:若signo是SIGCHLD，当调用进程的子进程终止时，不创建僵死进程，当调用进程随后调用wait，则阻塞到它所有子进程都终止
+SA_NODEFER: 当捕捉到此信号执行其信号处理函数时，系统不自动阻塞此信号，应用于早期不可靠信号
+SA_ONSTACK: XSI
+SA_RESETHAND: ...
+SA_RESTART: 由此信号中断的系统调用自动重启动
+SA_SIGINFO: 对信号处理程序提供了附加信息：一个指向siginfo的指针以及指向上下文的context指针
+```
+- signo是要检测或修改的信号编号
+- 若act非空，则修改其动作，若oact非空，则系统经由oact返回该信号的上一个动作
+一般信号处理程序调用：
+```C
+void handler(int signo);
+```
+如果设置sa_flag为SA_SIGINFO，则调用：
+```C
+void handler(int signo, siginfo_t *info, void *context)
+```
