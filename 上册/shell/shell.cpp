@@ -1,10 +1,12 @@
 #include <iostream>
 #include <unistd.h>
-#include <vector>
+#include <deque>
+#include <sys/wait.h>
+#include <cstring>
 using namespace std;
-vector<string> orders;
 string order;
-int main()
+char *args[1024];
+void getcurrentdir()
 {
     char path[1024];
     if (getcwd(path, sizeof(path)) != nullptr)
@@ -20,8 +22,60 @@ int main()
     {
         cerr << "Error getting current directory!" << endl;
     }
-    cin >> order;
-    orders.push_back(order);
-    orders.clear();
+}
+int main()
+{
+    char filename[15];
+    while (1)
+    {
+        pid_t pid = fork();
+        if (pid < 0)
+        {
+            cerr << "Fork failed!" << endl;
+            return 1;
+        }
+        else if (pid == 0)
+        {
+            getcurrentdir();
+            getline(cin, order);
+            // orders.push_front("/usrs/bin/");
+            int index = 0;
+            for (char s : order)
+            {
+                if (s == ' ')
+                {
+                    break;
+                }
+                filename[index++] = s;
+            }
+            filename[index] = '\0';
+            size_t orderpos = order.find_first_of(' ');
+            order = order.substr(orderpos + 1);
+            int i = 0, j = 0;
+            for (char c : order)
+            {
+                if (c == ' ')
+                {
+                    i++, j = 0;
+                }
+                else
+                {
+                    args[i][j++] = c;
+                }
+            }
+            args[i] = nullptr;
+            if(execvp(filename, args) == -1)
+            {
+                perror("execvp");
+                cout << "zgsh: command not found: " << filename;
+            }
+            order.clear();
+            memset(filename, 15, '\0');
+        }
+        else
+        {
+            wait(nullptr);
+        }
+    }
     return 0;
 }
