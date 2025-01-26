@@ -4,7 +4,7 @@
 #include <sys/wait.h>
 #include <cstring>
 using namespace std;
-string order;
+string order, orders;
 char *args[1024];
 void getcurrentdir()
 {
@@ -25,9 +25,40 @@ void getcurrentdir()
 }
 int main()
 {
-    char filename[15];
+    char filename[1024];
     while (1)
     {
+        getcurrentdir();
+        getline(cin, orders);
+        order = "/usr/bin/";
+        order += orders;
+        int index = 0;
+        for (char s : order)
+        {
+            if (s == ' ')
+            {
+                break;
+            }
+            filename[index++] = s;
+        }
+        filename[index] = '\0';
+        int i = 0, j = 0;
+        args[i] = new char[40];
+        for (char c : order)
+        {
+            if (c == ' ')
+            {
+                i++;
+                args[i] = new char[40];
+            }
+            else
+            {
+                
+                *args[i] = c;
+                args[i]++;
+            }
+        }
+        args[++i] = nullptr;
         pid_t pid = fork();
         if (pid < 0)
         {
@@ -36,46 +67,18 @@ int main()
         }
         else if (pid == 0)
         {
-            getcurrentdir();
-            getline(cin, order);
-            // orders.push_front("/usrs/bin/");
-            int index = 0;
-            for (char s : order)
-            {
-                if (s == ' ')
-                {
-                    break;
-                }
-                filename[index++] = s;
-            }
-            filename[index] = '\0';
-            size_t orderpos = order.find_first_of(' ');
-            order = order.substr(orderpos + 1);
-            int i = 0, j = 0;
-            for (char c : order)
-            {
-                if (c == ' ')
-                {
-                    i++, j = 0;
-                }
-                else
-                {
-                    args[i][j++] = c;
-                }
-            }
-            args[i] = nullptr;
-            if(execvp(filename, args) == -1)
+            if (execv(filename, args) == -1)
             {
                 perror("execvp");
-                cout << "zgsh: command not found: " << filename;
             }
-            order.clear();
-            memset(filename, 15, '\0');
+            exit(1);
         }
         else
         {
             wait(nullptr);
         }
+        order.clear();
+        memset(filename, '\0', strlen(filename));
     }
     return 0;
 }
