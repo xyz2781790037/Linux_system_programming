@@ -25,19 +25,26 @@ void getcurrentdir()
 }
 void segstr(string a, char *args[],int* i)
 {
+    char *headpointer;
     args[*i] = new char[40];
     for (char c : a)
     {
         if (c == ' ')
         {
-            *args[*i] = '\0';
-            *i++;
+            *(args[*i]) = '\0';
+            args[*i] = headpointer;
+            (*i)++;
             args[*i] = new char[40];
         }
         else
         {
-            *args[*i] = c;
-            args[*i]++;
+            *(args[*i]) = c;
+            if(c == a[0] || c == '-')
+            {
+                headpointer = args[*i];
+            }
+            
+            (args[*i])++;
         }
     }
 }
