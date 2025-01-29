@@ -4,11 +4,11 @@
 #include <sys/wait.h>
 #include <cstring>
 using namespace std;
-string order, orders;
+string order;
 char *args[1024];
 void getcurrentdir()
 {
-    char path[1024];
+    char path[1024] = "~";
     if (getcwd(path, sizeof(path)) != nullptr)
     {
         cout << "\033[32m➜  \033[0m";
@@ -23,15 +23,47 @@ void getcurrentdir()
         cerr << "Error getting current directory!" << endl;
     }
 }
+void segstr(string a, char *args[],int* i)
+{
+    args[*i] = new char[40];
+    for (char c : a)
+    {
+        if (c == ' ')
+        {
+            *args[*i] = '\0';
+            *i++;
+            args[*i] = new char[40];
+        }
+        else
+        {
+            *args[*i] = c;
+            args[*i]++;
+        }
+    }
+}
+int clearcmd(string a)
+{
+    if(a == "clear")
+    {
+        return 1;
+    }
+    return 0;
+}
 int main()
 {
     char filename[1024];
     while (1)
     {
         getcurrentdir();
-        getline(cin, orders);
-        order = "/usr/bin/";
-        order += orders;
+        getline(cin, order);
+        if(order.empty())
+        {
+            continue;
+        }
+        else if(clearcmd(order))
+        {
+            system("clear");
+        }
         int index = 0;
         for (char s : order)
         {
@@ -42,23 +74,9 @@ int main()
             filename[index++] = s;
         }
         filename[index] = '\0';
-        int i = 0, j = 0;
-        args[i] = new char[40];
-        for (char c : order)
-        {
-            if (c == ' ')
-            {
-                i++;
-                args[i] = new char[40];
-            }
-            else
-            {
-                
-                *args[i] = c;
-                args[i]++;
-            }
-        }
-        args[++i] = nullptr;
+        int i = 0;
+        segstr(order, args, &i);
+        args[++i] = NULL;
         pid_t pid = fork();
         if (pid < 0)
         {
@@ -67,7 +85,7 @@ int main()
         }
         else if (pid == 0)
         {
-            if (execv(filename, args) == -1)
+            if (execvp(filename, args) == -1)
             {
                 perror("execvp");
             }
@@ -79,6 +97,10 @@ int main()
         }
         order.clear();
         memset(filename, '\0', strlen(filename));
+        // for (int x = 0; x < i;x++)
+        // {
+        //     delete args[x];
+        // }
     }
     return 0;
 }
