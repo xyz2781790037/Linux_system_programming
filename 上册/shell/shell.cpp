@@ -1,14 +1,15 @@
 #include <iostream>
 #include <unistd.h>
-#include <deque>
+#include <vector>
 #include <sys/wait.h>
 #include <cstring>
 using namespace std;
 string order;
-char *args[1024];
+vector<char *> args;
+int count = 0;
 void getcurrentdir()
 {
-    char path[1024] = "~";
+    char path[1024];
     if (getcwd(path, sizeof(path)) != nullptr)
     {
         cout << "\033[32m➜  \033[0m";
@@ -23,34 +24,30 @@ void getcurrentdir()
         cerr << "Error getting current directory!" << endl;
     }
 }
-void segstr(string a, char *args[],int* i)
+void segstr()
 {
-    char *headpointer;
-    args[*i] = new char[40];
-    for (char c : a)
+    args.clear();
+    int start = 0, end = 0;
+    while(end <= order.size())
     {
-        if (c == ' ')
+        if(order[end] == ' ' || end == order.size())
         {
-            *(args[*i]) = '\0';
-            args[*i] = headpointer;
-            (*i)++;
-            args[*i] = new char[40];
-        }
-        else
-        {
-            *(args[*i]) = c;
-            if(c == a[0] || c == '-')
+            string a = order.substr(start, end - start);
+            char *arg = new char[a.size() + 1];
+            strcpy(arg, a.c_str());
+            args.push_back(arg);
+            if(end != order.size())
             {
-                headpointer = args[*i];
+                start = end + 1;
             }
-            
-            (args[*i])++;
         }
+        end++;
     }
+    args.push_back(nullptr);
 }
-int clearcmd(string a)
+int clearcmd()
 {
-    if(a == "clear")
+    if (order == "clear")
     {
         return 1;
     }
@@ -58,41 +55,37 @@ int clearcmd(string a)
 }
 int main()
 {
-    char filename[1024];
-    while (1)
+    string filename;
+    while(1)
     {
         getcurrentdir();
         getline(cin, order);
-        if(order.empty())
+        if (order.empty())
         {
             continue;
         }
-        else if(clearcmd(order))
+        else if (clearcmd())
         {
             system("clear");
         }
-        int index = 0;
         for (char s : order)
         {
             if (s == ' ')
             {
                 break;
             }
-            filename[index++] = s;
+            filename += s;
         }
-        filename[index] = '\0';
-        int i = 0;
-        segstr(order, args, &i);
-        args[++i] = NULL;
+        segstr();
         pid_t pid = fork();
         if (pid < 0)
         {
-            cerr << "Fork failed!" << endl;
+            cout << "Fork failed!" << endl;
             return 1;
         }
         else if (pid == 0)
         {
-            if (execvp(filename, args) == -1)
+            if (execvp(filename.c_str(), args.data()) == -1)
             {
                 perror("execvp");
             }
@@ -103,11 +96,6 @@ int main()
             wait(nullptr);
         }
         order.clear();
-        memset(filename, '\0', strlen(filename));
-        // for (int x = 0; x < i;x++)
-        // {
-        //     delete args[x];
-        // }
+        filename.clear();
     }
-    return 0;
 }
