@@ -3,13 +3,18 @@
 #include <vector>
 #include <sys/wait.h>
 #include <cstring>
+#include <string>
 using namespace std;
 string order, filename;
 vector<char *> args;
 char path[1024];
+char last_time_path[1024];
 bool cdcmd = false;
 void getcurrentdir()
 {
+    order.clear();
+    filename.clear();
+    strcpy(last_time_path, path);
     if (getcwd(path, sizeof(path)) != nullptr)
     {
         cout << "\033[32m➜  \033[0m";
@@ -52,8 +57,13 @@ void getfilename()
 }
 void cdcommit()
 {
+    cdcmd = true;
     string broken = order.substr(3);
-    if (chdir(broken.c_str()) == -1)
+    if (broken == "-")
+    {
+        cout << last_time_path << endl;
+    }
+    else if (chdir(broken.c_str()) == -1)
     {
         cout << "cd: 没有那个文件或目录或参数太多" << endl;
     }
@@ -94,9 +104,9 @@ void space_kg(int strindex = 0)
 }
 void lscolor()
 {
-    order += " --color=auto";
+    size_t lspos = order.find("ls");
+    order.insert(lspos + 2, " --color=auto");
 }
-
 int main()
 {
     while (1)
@@ -112,7 +122,7 @@ int main()
         {
             system("clear");
         }
-        else if (order[0] == 'l' && order[1] == 's')
+        else if (order.find("ls") != std::string::npos)
         {
             lscolor();
         }
@@ -120,12 +130,8 @@ int main()
         segstr();
         if (order[0] == 'c' && order[1] == 'd')
         {
-            cdcmd = true;
             cdcommit();
         }
-        pid_t pid = fork();
-        pidfork(pid);
-        order.clear();
-        filename.clear();
+        pidfork(fork());
     }
 }
