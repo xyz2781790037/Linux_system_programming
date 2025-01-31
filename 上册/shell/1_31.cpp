@@ -11,13 +11,6 @@ char path[1024];
 char last_time_path[1024];
 bool cdcmd = false;
 int pipecount, pipes[100][2];
-// void create_args()
-// {
-//     for (int i = 0; i <= pipecount;i++)
-//     {
-//         vector<char *> argss[i];
-//     }
-// }
 void getcurrentdir()
 {
     order.clear();
@@ -122,9 +115,9 @@ void lscolor()
 }
 void findpipe()
 {
-    for (int i = 0; i < order.size();i++)
+    for (int i = 0; i < order.size(); i++)
     {
-        if(order[i] == '|')
+        if (order[i] == '|')
         {
             pipecount++;
         }
