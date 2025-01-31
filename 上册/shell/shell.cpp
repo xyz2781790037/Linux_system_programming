@@ -14,7 +14,6 @@ void getcurrentdir()
 {
     order.clear();
     filename.clear();
-    strcpy(last_time_path, path);
     if (getcwd(path, sizeof(path)) != nullptr)
     {
         cout << "\033[32m➜  \033[0m";
@@ -58,6 +57,12 @@ void getfilename()
 void cdcommit()
 {
     cdcmd = true;
+    strcpy(last_time_path, path);
+    if (order.size() == 2)
+    {
+        size_t cdpos = order.find("cd");
+        order.insert(cdpos + 2, " /home/zgyx");
+    }
     string broken = order.substr(3);
     if (broken == "-")
     {
@@ -118,7 +123,7 @@ int main()
         {
             continue;
         }
-        else if (order == "clear")
+        else if (order.find("clear") != std::string::npos)
         {
             system("clear");
         }
@@ -128,7 +133,7 @@ int main()
         }
         getfilename();
         segstr();
-        if (order[0] == 'c' && order[1] == 'd')
+        if (order.find("cd") != std::string::npos)
         {
             cdcommit();
         }
