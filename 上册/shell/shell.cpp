@@ -5,23 +5,29 @@
 #include <cstring>
 #include <string>
 using namespace std;
-string order, filename;
-vector<char *> args;
+string order;
+vector<char *> args[100];
 char path[1024];
 char last_time_path[1024];
 bool cdcmd = false;
-int pipecount, pipes[100][2];
-// void create_args()
-// {
-//     for (int i = 0; i <= pipecount;i++)
-//     {
-//         vector<char *> argss[i];
-//     }
-// }
+int pipecount, pipes[100][2], argscount;
+pid_t pids[100];
+void create_args()
+{
+    for (int i = 0; i <= pipecount; i++)
+    {
+        vector<char *> args[i];
+    }
+}
 void getcurrentdir()
 {
+    memset(pipes, 0, sizeof(pipes));
     order.clear();
-    filename.clear();
+    argscount = pipecount = 0;
+    for (auto &v : args)
+    {
+        v.clear();
+    }
     if (getcwd(path, sizeof(path)) != nullptr)
     {
         cout << "\033[32m➜  \033[0m";
@@ -36,18 +42,22 @@ void getcurrentdir()
         cerr << "Error getting current directory!" << endl;
     }
 }
-void segstr()
+void segstr(int count)
 {
-    args.clear();
+    args[count].clear();
     int start = 0, end = 0;
     while (end <= order.size())
     {
-        if (order[end] == ' ' || end == order.size())
+        if (order[end] == '|')
+        {
+            break;
+        }
+        else if (order[end] == ' ' || end == order.size())
         {
             string a = order.substr(start, end - start);
             char *arg = new char[a.size() + 1];
             strcpy(arg, a.c_str());
-            args.push_back(arg);
+            args[count].push_back(arg);
             if (end != order.size())
             {
                 start = end + 1;
@@ -55,12 +65,7 @@ void segstr()
         }
         end++;
     }
-    args.push_back(nullptr);
-}
-void getfilename()
-{
-    size_t namepos = order.find_first_of(' ');
-    filename = order.substr(0, namepos);
+    args[count].push_back(nullptr);
 }
 void cdcommit()
 {
@@ -81,24 +86,43 @@ void cdcommit()
         cout << "cd: 没有那个文件或目录或参数太多" << endl;
     }
 }
-void pidfork(pid_t pid)
+void pidfork(pid_t pid, int count)
 {
+    pids[count] = pid;
     if (pid < 0)
     {
         cout << "Fork failed!" << endl;
         exit(1);
     }
-    else if (pid == 0)
+    else if (pids[count] == 0)
     {
-        if (execvp(filename.c_str(), args.data()) == -1 && cdcmd == false)
+        if (count > 0)
         {
-            cout << "zgsh: command not found: " << order << endl;
+            dup2(pipes[count - 1][0], STDIN_FILENO);
+        }
+        if (count < pipecount)
+        {
+            dup2(pipes[count][1], STDOUT_FILENO);
+        }
+        for (int i = 0; i < pipecount; i++)
+        {
+            close(pipes[i][0]);
+            close(pipes[i][1]);
+        }
+        if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
+        {
+            cout << "zgsh: command not found: " << args[count][0] << endl;
         }
         exit(1);
     }
-    else
+    for (int j = 0; j < pipecount; j++)
     {
-        wait(nullptr);
+        close(pipes[j][0]);
+        close(pipes[j][1]);
+    }
+    for (int i = 0; i < argscount; i++)
+    {
+        waitpid(pids[i], NULL, 0);
     }
 }
 void space_kg(int strindex = 0)
@@ -122,11 +146,20 @@ void lscolor()
 }
 void findpipe()
 {
-    for (int i = 0; i < order.size();i++)
+    for (char c : order)
     {
-        if(order[i] == '|')
+        if (c == '|')
         {
             pipecount++;
+        }
+    }
+    argscount = pipecount + 1;
+    for (int j = 0; j < pipecount; j++)
+    {
+        if (pipe(pipes[j]) == -1)
+        {
+            perror("pipe");
+            exit(1);
         }
     }
 }
@@ -137,7 +170,6 @@ int main()
         getcurrentdir();
         getline(cin, order);
         space_kg();
-        findpipe();
         if (order.empty())
         {
             continue;
@@ -145,18 +177,35 @@ int main()
         else if (order.find("clear") != std::string::npos)
         {
             system("clear");
+            continue;
         }
         else if (order.find("ls") != std::string::npos)
         {
             lscolor();
         }
-
-        getfilename();
-        segstr();
-        if (order.find("cd") != std::string::npos)
+        else if (order.find("cd") != std::string::npos)
         {
             cdcommit();
+            continue;
         }
-        pidfork(fork());
+        else if (order == "exit")
+        {
+            break;
+        }
+        findpipe();
+        create_args();
+        for (int i = 0; i < argscount; i++)
+        {
+            segstr(i);
+            pidfork(fork(), i);
+        }
+        for (int i = 0; i < argscount; ++i)
+        {
+            for (char *ptr : args[i])
+            {
+                delete[] ptr;
+            }
+            args[i].clear();
+        }
     }
 }

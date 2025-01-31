@@ -143,13 +143,12 @@ int main()
         {
             lscolor();
         }
-
-        getfilename();
-        segstr();
-        if (order.find("cd") != std::string::npos)
+        else if (order.find("cd") != std::string::npos)
         {
             cdcommit();
         }
+        getfilename();
+        segstr();
         pidfork(fork());
     }
 }
