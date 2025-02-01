@@ -4,6 +4,7 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <string>
+#include <fcntl.h>
 using namespace std;
 string order;
 vector<char *> args[100];
@@ -33,6 +34,58 @@ void getcurrentdir()
     else
     {
         cerr << "Error getting current directory!" << endl;
+    }
+}
+void erase_args(int count, int index)
+{
+    delete[] args[count][index]; // 释放内存
+    args[count].erase(args[count].begin() + index);
+}
+void redirect(int count)
+{
+    for (int i = 0; (int)i < args[count].size(); i++)
+    {
+        if (args[count][i] == nullptr)
+        {
+            i++;
+            continue;
+        }
+        if (strcmp(args[count][i], "<") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDONLY,0644);
+            dup2(fd, STDIN_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], ">") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], "2>") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fd, STDERR_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], ">>") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_APPEND | O_CREAT, 0644);
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
     }
 }
 void segstr(int count)
@@ -99,11 +152,13 @@ void pidfork(pid_t pid, int count)
         {
             dup2(pipes[count][1], STDOUT_FILENO);
         }
+        redirect(count);
         for (int i = 0; i < pipecount; i++)
         {
             close(pipes[i][0]);
             close(pipes[i][1]);
         }
+
         if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
         {
             cout << "zgsh: command not found: " << args[count][0] << endl;

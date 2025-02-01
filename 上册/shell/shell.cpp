@@ -5,20 +5,13 @@
 #include <cstring>
 #include <string>
 using namespace std;
-string order;
+string order, segcmd;
 vector<char *> args[100];
 char path[1024];
 char last_time_path[1024];
 bool cdcmd = false;
 int pipecount, pipes[100][2], argscount;
 pid_t pids[100];
-void create_args()
-{
-    for (int i = 0; i <= pipecount; i++)
-    {
-        vector<char *> args[i];
-    }
-}
 void getcurrentdir()
 {
     memset(pipes, 0, sizeof(pipes));
@@ -46,19 +39,21 @@ void segstr(int count)
 {
     args[count].clear();
     int start = 0, end = 0;
-    while (end <= order.size())
+    while (end <= segcmd.size())
     {
-        if (order[end] == '|')
+        if (segcmd[end] == '|')
         {
+            size_t pipepos = segcmd.find_first_of('|');
+            segcmd = segcmd.substr(pipepos + 2);
             break;
         }
-        else if (order[end] == ' ' || end == order.size())
+        else if (segcmd[end] == ' ' || end == segcmd.size())
         {
-            string a = order.substr(start, end - start);
+            string a = segcmd.substr(start, end - start);
             char *arg = new char[a.size() + 1];
             strcpy(arg, a.c_str());
             args[count].push_back(arg);
-            if (end != order.size())
+            if (end != segcmd.size())
             {
                 start = end + 1;
             }
@@ -193,7 +188,7 @@ int main()
             break;
         }
         findpipe();
-        create_args();
+        segcmd = order;
         for (int i = 0; i < argscount; i++)
         {
             segstr(i);
