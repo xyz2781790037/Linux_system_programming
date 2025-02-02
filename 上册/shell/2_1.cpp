@@ -4,9 +4,11 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <string>
+#include <numeric>
 #include <fcntl.h>
 using namespace std;
 string order;
+vector<string> segcmd;
 vector<char *> args[100];
 char path[1024];
 char last_time_path[1024];
@@ -17,6 +19,7 @@ void getcurrentdir()
 {
     memset(pipes, 0, sizeof(pipes));
     order.clear();
+    segcmd.clear();
     argscount = pipecount = 0;
     for (auto &v : args)
     {
@@ -33,12 +36,12 @@ void getcurrentdir()
     }
     else
     {
-        cerr << "Error getting current directory!" << endl;
+        perror("getcwd");
     }
 }
 void erase_args(int count, int index)
 {
-    delete[] args[count][index]; // 释放内存
+    delete[] args[count][index];
     args[count].erase(args[count].begin() + index);
 }
 void redirect(int count)
@@ -52,7 +55,7 @@ void redirect(int count)
         }
         if (strcmp(args[count][i], "<") == 0)
         {
-            int fd = open(args[count][i + 1], O_RDONLY,0644);
+            int fd = open(args[count][i + 1], O_RDONLY, 0644);
             dup2(fd, STDIN_FILENO);
             close(fd);
             erase_args(count, i + 1);
@@ -88,25 +91,53 @@ void redirect(int count)
         }
     }
 }
-void segstr(int count)
+void splitcmd()
+{
+    string a;
+    size_t start = 0;
+    for (int i = 0; i < (int)order.size(); i++)
+    {
+        if (order[i] == '|' || i == (int)order.size() - 1)
+        {
+            if (i == order.size() - 1)
+            {
+                a = order.substr(start);
+                char *arg = new char[a.size() + 1];
+                strcpy(arg, a.c_str());
+                segcmd.push_back(arg);
+            }
+            else
+            {
+                a = order.substr(start, i - start - 1);
+                char *arg = new char[a.size() + 1];
+                strcpy(arg, a.c_str());
+                segcmd.push_back(arg);
+            }
+            start = i + 2;
+        }
+    }
+}
+void segstr(int count, string &a)
 {
     args[count].clear();
     int start = 0, end = 0;
-    while (end <= order.size())
+    while (end <= a.size())
     {
-        if (order[end] == '|')
+        if (a[end] == ' ' || end == a.size() - 1)
         {
-            size_t pipepos = order.find_first_of('|');
-            order = order.substr(pipepos + 2);
-            break;
-        }
-        else if (order[end] == ' ' || end == order.size())
-        {
-            string a = order.substr(start, end - start);
+            string b;
+            if (end == a.size() - 1)
+            {
+                b = a.substr(start);
+            }
+            else
+            {
+                b = a.substr(start, end - start);
+            }
             char *arg = new char[a.size() + 1];
-            strcpy(arg, a.c_str());
+            strcpy(arg, b.c_str());
             args[count].push_back(arg);
-            if (end != order.size())
+            if (end != a.size())
             {
                 start = end + 1;
             }
@@ -152,27 +183,16 @@ void pidfork(pid_t pid, int count)
         {
             dup2(pipes[count][1], STDOUT_FILENO);
         }
-        redirect(count);
         for (int i = 0; i < pipecount; i++)
         {
             close(pipes[i][0]);
             close(pipes[i][1]);
         }
-
         if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
         {
             cout << "zgsh: command not found: " << args[count][0] << endl;
         }
         exit(1);
-    }
-    for (int j = 0; j < pipecount; j++)
-    {
-        close(pipes[j][0]);
-        close(pipes[j][1]);
-    }
-    for (int i = 0; i < argscount; i++)
-    {
-        waitpid(pids[i], NULL, 0);
     }
 }
 void space_kg(int strindex = 0)
@@ -192,7 +212,7 @@ void space_kg(int strindex = 0)
 void lscolor()
 {
     size_t lspos = order.find("ls");
-    order.insert(lspos + 2, " --color=auto");
+    order.insert(lspos + 2, " --color=always");
 }
 void findpipe()
 {
@@ -217,6 +237,10 @@ int main()
 {
     while (1)
     {
+        for (auto &v : args)
+        {
+            v.clear();
+        }
         getcurrentdir();
         getline(cin, order);
         space_kg();
@@ -243,10 +267,21 @@ int main()
             break;
         }
         findpipe();
+        splitcmd();
         for (int i = 0; i < argscount; i++)
         {
-            segstr(i);
+            string a = accumulate(segcmd[i].begin(), segcmd[i].end(), string());
+            segstr(i, a);
             pidfork(fork(), i);
+        }
+        for (int j = 0; j < pipecount; j++)
+        {
+            close(pipes[j][0]);
+            close(pipes[j][1]);
+        }
+        for (int i = 0; i < argscount; i++)
+        {
+            waitpid(pids[i], NULL, 0);
         }
         for (int i = 0; i < argscount; ++i)
         {

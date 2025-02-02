@@ -4,8 +4,11 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <string>
+#include <numeric>
+#include <fcntl.h>
 using namespace std;
-string order, segcmd;
+string order;
+vector<string> segcmd;
 vector<char *> args[100];
 char path[1024];
 char last_time_path[1024];
@@ -16,6 +19,7 @@ void getcurrentdir()
 {
     memset(pipes, 0, sizeof(pipes));
     order.clear();
+    segcmd.clear();
     argscount = pipecount = 0;
     for (auto &v : args)
     {
@@ -32,28 +36,108 @@ void getcurrentdir()
     }
     else
     {
-        cerr << "Error getting current directory!" << endl;
+        perror("getcwd");
     }
 }
-void segstr(int count)
+void erase_args(int count, int index)
+{
+    delete[] args[count][index];
+    args[count].erase(args[count].begin() + index);
+}
+void redirect(int count)
+{
+    for (int i = 0; (int)i < args[count].size(); i++)
+    {
+        if (args[count][i] == nullptr)
+        {
+            i++;
+            continue;
+        }
+        if (strcmp(args[count][i], "<") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDONLY, 0644);
+            dup2(fd, STDIN_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], ">") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], "2>") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_CREAT | O_TRUNC, 0644);
+            dup2(fd, STDERR_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+        else if (strcmp(args[count][i], ">>") == 0)
+        {
+            int fd = open(args[count][i + 1], O_RDWR | O_APPEND | O_CREAT, 0644);
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+            erase_args(count, i + 1);
+            erase_args(count, i);
+            continue;
+        }
+    }
+}
+void splitcmd()
+{
+    string a;
+    size_t start = 0;
+    for (int i = 0; i < (int)order.size(); i++)
+    {
+        if (order[i] == '|' || i == (int)order.size() - 1)
+        {
+            if (i == order.size() - 1)
+            {
+                a = order.substr(start);
+                char *arg = new char[a.size() + 1];
+                strcpy(arg, a.c_str());
+                segcmd.push_back(arg);
+            }
+            else
+            {
+                a = order.substr(start, i - start - 1);
+                char *arg = new char[a.size() + 1];
+                strcpy(arg, a.c_str());
+                segcmd.push_back(arg);
+            }
+            start = i + 2;
+        }
+    }
+}
+void segstr(int count, string &a)
 {
     args[count].clear();
     int start = 0, end = 0;
-    while (end <= segcmd.size())
+    while (end <= a.size())
     {
-        if (segcmd[end] == '|')
+        if (a[end] == ' ' || end == a.size() - 1)
         {
-            size_t pipepos = segcmd.find_first_of('|');
-            segcmd = segcmd.substr(pipepos + 2);
-            break;
-        }
-        else if (segcmd[end] == ' ' || end == segcmd.size())
-        {
-            string a = segcmd.substr(start, end - start);
+            string b;
+            if (end == a.size() - 1)
+            {
+                b = a.substr(start);
+            }
+            else
+            {
+                b = a.substr(start, end - start);
+            }
             char *arg = new char[a.size() + 1];
-            strcpy(arg, a.c_str());
+            strcpy(arg, b.c_str());
             args[count].push_back(arg);
-            if (end != segcmd.size())
+            if (end != a.size())
             {
                 start = end + 1;
             }
@@ -99,6 +183,7 @@ void pidfork(pid_t pid, int count)
         {
             dup2(pipes[count][1], STDOUT_FILENO);
         }
+        redirect(count);
         for (int i = 0; i < pipecount; i++)
         {
             close(pipes[i][0]);
@@ -109,15 +194,6 @@ void pidfork(pid_t pid, int count)
             cout << "zgsh: command not found: " << args[count][0] << endl;
         }
         exit(1);
-    }
-    for (int j = 0; j < pipecount; j++)
-    {
-        close(pipes[j][0]);
-        close(pipes[j][1]);
-    }
-    for (int i = 0; i < argscount; i++)
-    {
-        waitpid(pids[i], NULL, 0);
     }
 }
 void space_kg(int strindex = 0)
@@ -162,6 +238,10 @@ int main()
 {
     while (1)
     {
+        for (auto &v : args)
+        {
+            v.clear();
+        }
         getcurrentdir();
         getline(cin, order);
         space_kg();
@@ -188,11 +268,21 @@ int main()
             break;
         }
         findpipe();
-        segcmd = order;
+        splitcmd();
         for (int i = 0; i < argscount; i++)
         {
-            segstr(i);
+            string a = accumulate(segcmd[i].begin(), segcmd[i].end(), string());
+            segstr(i, a);
             pidfork(fork(), i);
+        }
+        for (int j = 0; j < pipecount; j++)
+        {
+            close(pipes[j][0]);
+            close(pipes[j][1]);
+        }
+        for (int i = 0; i < argscount; i++)
+        {
+            waitpid(pids[i], NULL, 0);
         }
         for (int i = 0; i < argscount; ++i)
         {
