@@ -6,7 +6,7 @@
 #include <string>
 #include <numeric>
 #include <fcntl.h>
-#include "using.hpp"
+#include "start_animation.hpp"
 using namespace std;
 string order;
 vector<string> segcmd;
