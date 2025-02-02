@@ -6,6 +6,7 @@
 #include <string>
 #include <numeric>
 #include <fcntl.h>
+#include "using.hpp"
 using namespace std;
 string order;
 vector<string> segcmd;
@@ -236,7 +237,8 @@ void findpipe()
 }
 int main()
 {
-    while (1)
+    print();
+    while (start)
     {
         for (auto &v : args)
         {
