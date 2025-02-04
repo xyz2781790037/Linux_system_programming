@@ -12,7 +12,6 @@ string order;
 vector<string> segcmd;
 vector<char *> args[100];
 char path[1024];
-char last_time_path[1024];
 bool cdcmd = false;
 int pipecount, pipes[100][2], argscount;
 pid_t pids[100];
@@ -150,7 +149,6 @@ void segstr(int count, string &a)
 void cdcommit()
 {
     cdcmd = true;
-    strcpy(last_time_path, path);
     if (order.size() == 2)
     {
         size_t cdpos = order.find("cd");
@@ -159,7 +157,12 @@ void cdcommit()
     string broken = order.substr(3);
     if (broken == "-")
     {
+        char *last_time_path = getenv("OLDPWD");
         cout << last_time_path << endl;
+        if(chdir(last_time_path) == -1)
+        {
+            perror("cd");
+        }
     }
     else if (chdir(broken.c_str()) == -1)
     {
@@ -238,6 +241,7 @@ void findpipe()
 int main()
 {
     print();
+    signal(SIGINT, SIG_IGN);
     while (start)
     {
         for (auto &v : args)
