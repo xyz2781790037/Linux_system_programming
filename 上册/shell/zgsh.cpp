@@ -159,7 +159,7 @@ void cdcommit()
     {
         char *last_time_path = getenv("OLDPWD");
         cout << last_time_path << endl;
-        if(chdir(last_time_path) == -1)
+        if (chdir(last_time_path) == -1)
         {
             perror("cd");
         }
@@ -221,14 +221,8 @@ void lscolor()
 }
 void findpipe()
 {
-    for (char c : order)
-    {
-        if (c == '|')
-        {
-            pipecount++;
-        }
-    }
-    argscount = pipecount + 1;
+    argscount = segcmd.size();
+    pipecount = argscount - 1;
     for (int j = 0; j < pipecount; j++)
     {
         if (pipe(pipes[j]) == -1)
@@ -273,8 +267,8 @@ int main()
         {
             break;
         }
-        findpipe();
         splitcmd();
+        findpipe();
         for (int i = 0; i < argscount; i++)
         {
             string a = accumulate(segcmd[i].begin(), segcmd[i].end(), string());
