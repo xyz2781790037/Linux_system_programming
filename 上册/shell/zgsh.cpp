@@ -12,7 +12,7 @@ string order;
 vector<string> segcmd;
 vector<char *> args[100];
 char path[1024];
-bool cdcmd = false;
+bool cdcmd = false, htpro = false;
 int pipecount, pipes[100][2], argscount;
 pid_t pids[100];
 void getcurrentdir()
@@ -172,32 +172,66 @@ void cdcommit()
 void pidfork(pid_t pid, int count)
 {
     pids[count] = pid;
-    if (pid < 0)
+    if (htpro)
     {
-        cout << "Fork failed!" << endl;
-        exit(1);
+        if(pids[count] < 0)
+        {
+            cout << "Fork failed" << endl;
+            exit(1);
+        }
+        else if (pid > 0)
+        {
+            cout << "[" << count << "]" << " " << pid << endl;
+            if (count > 0)
+            {
+                dup2(pipes[count - 1][0], STDIN_FILENO);
+            }
+            if (count < pipecount)
+            {
+                dup2(pipes[count][1], STDOUT_FILENO);
+            }
+            redirect(count);
+            for (int i = 0; i < pipecount; i++)
+            {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
+            }
+            if (execvp(args[count][0], args[count].data()) == -1)
+            {
+                cout << "zgsh: command not found: " << args[count][0] << endl;
+                exit(1);
+            }
+        }
     }
-    else if (pids[count] == 0)
+    else
     {
-        if (count > 0)
+        if (pid < 0)
         {
-            dup2(pipes[count - 1][0], STDIN_FILENO);
+            cout << "Fork failed!" << endl;
+            exit(1);
         }
-        if (count < pipecount)
+        else if (pids[count] == 0)
         {
-            dup2(pipes[count][1], STDOUT_FILENO);
+            if (count > 0)
+            {
+                dup2(pipes[count - 1][0], STDIN_FILENO);
+            }
+            if (count < pipecount)
+            {
+                dup2(pipes[count][1], STDOUT_FILENO);
+            }
+            redirect(count);
+            for (int i = 0; i < pipecount; i++)
+            {
+                close(pipes[i][0]);
+                close(pipes[i][1]);
+            }
+            if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
+            {
+                cout << "zgsh: command not found: " << args[count][0] << endl;
+            }
+            exit(1);
         }
-        redirect(count);
-        for (int i = 0; i < pipecount; i++)
-        {
-            close(pipes[i][0]);
-            close(pipes[i][1]);
-        }
-        if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
-        {
-            cout << "zgsh: command not found: " << args[count][0] << endl;
-        }
-        exit(1);
     }
 }
 void space_kg(int strindex = 0)
@@ -236,6 +270,8 @@ int main()
 {
     print();
     signal(SIGINT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+
     while (start)
     {
         for (auto &v : args)
@@ -249,23 +285,30 @@ int main()
         {
             continue;
         }
-        else if (order.find("clear") != std::string::npos)
+        else if (order.find("clear") != string::npos)
         {
             system("clear");
             continue;
         }
-        else if (order.find("ls") != std::string::npos)
+        else if (order.find("ls") != string::npos)
         {
             lscolor();
         }
-        else if (order.find("cd") != std::string::npos)
+        else if (order.find("cd") != string::npos)
         {
             cdcommit();
             continue;
         }
-        else if (order == "exit")
+        else if (order == "exit" || order == "eee")
         {
             break;
+        }
+        if (order.find("&") != string::npos)
+        {
+            size_t hpos = order.find("&");
+            order = order.substr(0, hpos);
+            htpro = true;
+            space_kg();
         }
         splitcmd();
         findpipe();
@@ -280,10 +323,14 @@ int main()
             close(pipes[j][0]);
             close(pipes[j][1]);
         }
-        for (int i = 0; i < argscount; i++)
+        if (!htpro)
         {
-            waitpid(pids[i], NULL, 0);
+            for (int i = 0; i < argscount; i++)
+            {
+                waitpid(pids[i], NULL, 0);
+            }
         }
+        htpro = false;
         for (int i = 0; i < argscount; ++i)
         {
             for (char *ptr : args[i])
