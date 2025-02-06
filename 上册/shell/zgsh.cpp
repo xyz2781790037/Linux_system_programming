@@ -172,66 +172,40 @@ void cdcommit()
 void pidfork(pid_t pid, int count)
 {
     pids[count] = pid;
-    if (htpro)
+    if (pid < 0)
     {
-        if(pids[count] < 0)
-        {
-            cout << "Fork failed" << endl;
-            exit(1);
-        }
-        else if (pid > 0)
-        {
-            cout << "[" << count << "]" << " " << pid << endl;
-            if (count > 0)
-            {
-                dup2(pipes[count - 1][0], STDIN_FILENO);
-            }
-            if (count < pipecount)
-            {
-                dup2(pipes[count][1], STDOUT_FILENO);
-            }
-            redirect(count);
-            for (int i = 0; i < pipecount; i++)
-            {
-                close(pipes[i][0]);
-                close(pipes[i][1]);
-            }
-            if (execvp(args[count][0], args[count].data()) == -1)
-            {
-                cout << "zgsh: command not found: " << args[count][0] << endl;
-                exit(1);
-            }
-        }
+        cout << "Fork failed!" << endl;
+        exit(1);
     }
-    else
+    else if (pids[count] == 0)
     {
-        if (pid < 0)
+        if (count > 0)
         {
-            cout << "Fork failed!" << endl;
-            exit(1);
+            dup2(pipes[count - 1][0], STDIN_FILENO);
         }
-        else if (pids[count] == 0)
+        if (count < pipecount)
         {
-            if (count > 0)
-            {
-                dup2(pipes[count - 1][0], STDIN_FILENO);
-            }
-            if (count < pipecount)
-            {
-                dup2(pipes[count][1], STDOUT_FILENO);
-            }
-            redirect(count);
-            for (int i = 0; i < pipecount; i++)
-            {
-                close(pipes[i][0]);
-                close(pipes[i][1]);
-            }
-            if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
-            {
-                cout << "zgsh: command not found: " << args[count][0] << endl;
-            }
-            exit(1);
+            dup2(pipes[count][1], STDOUT_FILENO);
         }
+        redirect(count);
+        for (int i = 0; i < pipecount; i++)
+        {
+            close(pipes[i][0]);
+            close(pipes[i][1]);
+        }
+        if (execvp(args[count][0], args[count].data()) == -1 && cdcmd == false)
+        {
+            cout << "zgsh: command not found: " << args[count][0] << endl;
+        }
+        exit(1);
+    }
+    else if (pid > 0 && htpro)
+    {
+        if (count == 0)
+        {
+            cout << "[" << count + 1 << "]";
+        }
+        cout << " " << pid;
     }
 }
 void space_kg(int strindex = 0)
@@ -271,7 +245,7 @@ int main()
     print();
     signal(SIGINT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
-
+    signal(SIGCHLD, SIG_IGN);
     while (start)
     {
         for (auto &v : args)
@@ -323,14 +297,14 @@ int main()
             close(pipes[j][0]);
             close(pipes[j][1]);
         }
-        if (!htpro)
+        for (int i = 0; i < argscount; i++)
         {
-            for (int i = 0; i < argscount; i++)
-            {
-                waitpid(pids[i], NULL, 0);
-            }
+            waitpid(pids[i], NULL, 0);
         }
-        htpro = false;
+        if(htpro)
+        {
+            cout << endl;
+        }
         for (int i = 0; i < argscount; ++i)
         {
             for (char *ptr : args[i])
