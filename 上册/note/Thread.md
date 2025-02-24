@@ -1,4 +1,5 @@
 # 第29章 线程基础
+### 概述
 进程的弊端：进程间的信息难以共享，调用fork创建进程的代价相对较高，而线程之间能够方便、快捷的共享信息，创建线程比创建进程块10倍甚至更多，每个线程都包含表示执行环境所必须的信息，其中有进程中标识线程的线程ID、一组寄存器值、栈、调度优先级和策略、信号屏蔽字、errno变量以及线程私有数据等
 - 通过为每种事件类型分配单独的处理线程，可以简化处理异步事件的代码
 - 多个进程必须使用操作系统提供的复杂机制才能实现内存和文件描述符的共享
@@ -19,3 +20,70 @@
 - 资源消耗（由getrusage返回）
 - nice值（由setpriority和nice设置）
 所有的线程驻留同一虚拟地址空间，利用一个合适的指针，各个线程可以在对方栈中相互共享数据
+### Pthread API详细背景
+#### 数据类型
+pthread_t：tid
+
+pthread_mutex_t：互斥对象
+
+pthread_mutexattr_t：互斥对象属性
+
+pthread_cond_t：条件变量
+
+pthread_condattr_t：条件变量属性
+
+pthread_key_t：线程特有数据的键
+
+pthread_once_t：一次性初始化控制上下文
+
+pthread_attr_t：线程的属性对象
+#### 线程和errno
+Linux将errno定义为宏，可展开为函数，并返回一个左值，为每个线程所独有，errno机制保留传统UNIX API报错方式的同时，适应了多线程环境
+#### Pthreads API函数返回值
+0表示成功，正值表示失败，失败时的返回值，与传统UNIX系统调用errno的含义相同
+### 创建线程
+```C
+#include <pthread.h>
+
+int pthread_create(pthread_t * __restrict tidp,
+		const pthread_attr_t * __restrict attr,
+		void * (*start_rtn)(void *),
+		void * __restrict arg);
+// 返回值：若成功，返回0，若失败，返回错误编号		
+```
+- 若成功返回，新创建线程的ID会被设置为tid指向的内存单元
+- 新线程从start_rtn开始运行，该函数只有一个无类型指针参数，如果需要多个参数，需要放到一个结构体中
+- 线程创建后，不能保证新线程先运行，还是调用线程先运行
+### 终止线程
+单个线程的退出方式：
+- 从启动例程中返回，返回值是线程的退出码
+- 被同一进程的其他线程调用pthread_cancel取消
+- 调用pthread_exit
+- 任意线程调用exit或主程序执行了return
+```C
+void pthread_exit(void * rval_ptr);
+```
+其返回值可被另一线程通过pthread_join获取，rval_ptr指向的内容不应该分配于线程栈上
+### 线程ID
+```C
+pthread_t pthread_self(void);
+// 返回值：调用线程的线程ID
+```
+线程ID只有在它所属的进程上下文中才有意义，必须用函数比较两个线程ID：
+```c
+#include <pthread.h>
+
+int pthread_equal(pthread_t tid1, pthread_t tid2);
+// 若相等，返回非0，否则，返回0
+```
+Linux中，线程ID在所有进程中都是唯一，POSIX线程ID由线程库负责分配和维护，而gettid返回的线程ID是由内核分配的数字，类似于进程ID
+### 连接已终止的线程
+pthread_join等待由pthread标识的线程终止，如果线程已经终止，则立即返回，否则一直阻塞，直到指定的线程调用pthread_exit、被取消（rval_ptr指定的内存单元设置为PTHREAD_CANCELED）或从启动例程返回，这种操作称为连接
+> PTHREAD_CANCELED 是一个特定的常量值，用于表示一个线程被取消的状态。在 POSIX 线程（pthreads）中，当一个线程被取消时，线程的返回值通常会被设置为 PTHREAD_CANCELED，这表示该线程因取消操作而终止，而不是正常退出。
+```C
+int pthread_join(pthread_t thread, void ** rval_ptr)
+// 返回值：若成功，返回0，若出错，返回错误编号
+```
+如果线程没有分离，则必须进行连接，如果未能连接，则线程终止时将产生僵尸线程，pthread_join与waitpid的差异：
+- 线程之间的关系时对等的
+- 无法连接任意线程，也不能以非阻塞方式进行连接
