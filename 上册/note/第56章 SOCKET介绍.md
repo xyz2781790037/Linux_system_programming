@@ -1,0 +1,92 @@
+# 第56章 SOCKET介绍
+
+### 概述
+
+现代操作系统至少支持以下domain：
+
+- UNIX（AF_UNIX）：同一主机上的应用程序之间通信
+- IPv4（AF_INET）：不同主机上的应用程序之间通过因特网协议第4版本进行通信
+- IPv6（AF_INET6）：不同主机上的应用程序之间通过因特网协议第6版本进行通信
+
+```bush
+Domain    执行的通信        应用程序间的通信        地址格式            地址结构
+AF_UNIX    内核中            同一主机              路径名             sockaddr_un
+AF_INET    IPv4          通过IPv4连接的不同主机   32位IPv4+16位端口号   sockaddr_in
+AF_INET6   IPv6          通过IPv6连接的不同主机   128位IPv6+16位端口号  sockaddr_in6
+```
+
+##### socket 类型及其属性
+
+![socket 类型及其属性](https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRb7f6NqhhK-mMQ6j9I-k01zL1h5_y6G2CH0A&s)
+
+Internet domain中，数据报socket使用用户数据报协议UDP，流socket使用传输控制协议TCP
+
+socket 是一个允许通信的“设备”，两个应用程序都需要用到它。服务器将自己的 socket 绑定到一个众所周知的地址（名称）上使得客户端能够定位到它的位置。
+
+```bush
+socket(): 创建一个新的socket
+bind(): 通常服务器端需要调用将其绑定到一个众所周知的地址使得客户端能够定位到该socket
+listen(): 允许一个流socket接收来自其他socket的接入
+accept(): 监听流socket上的来自对等socket的连接
+connect(): 建立与对等socket之间的连接
+```
+
+默认情况下，socket的系统调用如send、recv、sentto、recvfrom在IO无法立即完成时阻塞，可以通过fcntl的 F_SETFL操作启用O_NONBLOCK执行非阻塞
+
+##### socket()：创建一个socket
+
+```c++
+#include <sys/socket.h>
+
+int socket(int domain, int type, int protocol);
+// 返回值：若成功，返回文件描述符，若出错，返回-1
+
+type的类型：
+SOCK_DGRAM: 固定长度的、无连接的、不可靠的报文传递
+SOCK_RAW:   IP协议的数据报接口
+SOCK_SEQPACKET: 固定长度的、有序的、可靠的、面向连接的报文传递
+SOCK_STREAM: 有序的、可靠的、双向的、面向连接的字节流
+
+protocol：
+IPPROTO_IP: IPv4
+IPPROTO_IPV6: IPv6
+IPPROTO_ICMP: 因特网控制报文协议（Internet Control Message Protocol）
+IPPROTO_RAW: 原始IP数据包协议
+IPPROTO_TCP: 传输控制协议（Transmission Control Protocol）
+IPPROTO_UDP: 用户数据报协议（User Datagram Protocol）
+
+从内核2.6.27开始，为type提供了第二种用途，允许两个非标准的标记与sock类型取OR：
+SOCK_CLOEXEC：导致内核为新文件描述符启动FD_CLOEXEC
+SOCK_NONBLOCK：导致内核为新文件描述符启动O_NONBLOCK
+```
+
+##### bind()：将绑定到地址
+
+```c
+int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+// 返回值：若成功，返回0，若出错，返回-1
+
+一般会将服务器的socket绑定到一个众所周知的地址，即一个固定的客户端提前就知道的地址，除了这种绑定之外，还有其他做法：对于Internet domain socket，可以不调用bind而直接调用listen，这导致内核为该socket选择一个临时端口，然后服务器通过getsockname获取socket地址，服务器需要向一个中心目录服务程序注册服务器的地址，之后客户端通过这个中心目录服务程序获取
+```
+
+##### struct sockaddr：通用socket地址结构
+
+```c
+struct sockaddr
+{
+    sa_family_t  sa_family: /* 地址协议族 */
+    char  sa_data[14]; /* 可变长度的地址 */
+    ...
+}
+它的唯一用途是将各种domain的特定地址结构转换为单个类型提供给socket系统调用中的参数使用
+
+Internet domain socket的地址结构：
+struct socketaddr_in
+{
+    sa_family_t  sin_family: /* 地址协议族 */
+    in_port_t  sin_port;  /* 端口号 */
+    struct in6_addr  sin6_addr; /* IPv4地址 */
+    unsigned char sin_zero[8];  /* 填充字段，应该全部置为0 */
+}
+```
+
